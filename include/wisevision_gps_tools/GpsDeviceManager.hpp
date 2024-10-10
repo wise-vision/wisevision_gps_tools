@@ -15,6 +15,7 @@
 #include <fstream>
 #include <iomanip>
 #include <mutex>
+#include <nlohmann/json.hpp>
 #include <sstream>
 #include <string>
 #include <unordered_map>
@@ -26,6 +27,19 @@ using AddDataToDataBase = wisevision_msgs::srv::AddDataToDataBase;
 using DeleteDataFromDataBase = wisevision_msgs::srv::DeleteDataFromDataBase;
 using GpsDevicesPublisher = wisevision_msgs::msg::GpsDevicesPublisher;
 using GetMessages = lora_msgs::srv::GetMessages;
+
+inline std::string eui64ToString(const std::array<uint8_t, 8> &data) {
+  std::stringstream ss;
+  ss << std::hex << std::setfill('0');
+  for (size_t i = 0; i < data.size(); ++i) {
+    ss << std::setw(2) << static_cast<int>(data[i]);
+    if (i != data.size() - 1) {
+      ss << ":";
+    }
+  }
+
+  return ss.str();
+}
 
 class GpsDeviceManager : public rclcpp::Node {
 public:
@@ -54,7 +68,7 @@ private:
   rclcpp::Client<GetMessages>::SharedPtr m_get_messages_client;
   rclcpp::Publisher<GpsDevicesPublisher>::SharedPtr m_gps_publisher;
   rclcpp::TimerBase::SharedPtr m_timer;
-
+  rclcpp::CallbackGroup::SharedPtr m_callback_group;
   std::unordered_map<std::string,
                      std::pair<std::string, sensor_msgs::msg::NavSatFix>>
       m_device_map;
@@ -62,5 +76,4 @@ private:
 
   std::mutex m_mutex;
   std::condition_variable m_cv;
-  rclcpp::CallbackGroup::SharedPtr m_callback_group;
 };

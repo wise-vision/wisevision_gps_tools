@@ -1,26 +1,4 @@
 #include "wisevision_gps_tools/GpsDeviceManager.hpp"
-#include "rclcpp/rclcpp.hpp"
-#include "sensor_msgs/msg/nav_sat_fix.hpp"
-#include "wisevision_msgs/srv/add_gps_device.hpp"
-#include "wisevision_msgs/srv/delete_gps_device.hpp"
-#include "wisevision_msgs/srv/modify_gps_device.hpp"
-#include "yaml-cpp/yaml.h"
-#include <array>
-#include <fstream>
-#include <iomanip>
-#include <sstream>
-
-std::string eui64ToString(const std::array<uint8_t, 8> &data) {
-  std::stringstream ss;
-  for (size_t i = 0; i < data.size(); i++) {
-    ss << std::hex << std::setw(2) << std::setfill('0')
-       << static_cast<int>(data[i]);
-    if (i != data.size() - 1) {
-      ss << ":";
-    }
-  }
-  return ss.str();
-}
 
 GpsDeviceManager::GpsDeviceManager()
     : Node("gps_device_manager"), m_yaml_file("gps_devices.yaml") {
@@ -54,10 +32,12 @@ GpsDeviceManager::GpsDeviceManager()
   m_add_data_to_data_base_client = this->create_client<AddDataToDataBase>(
       "add_data_to_database", rmw_qos_profile_services_default,
       m_callback_group);
+
   m_delete_data_from_data_base_client =
       this->create_client<DeleteDataFromDataBase>(
           "delete_data_from_database", rmw_qos_profile_services_default,
           m_callback_group);
+
   initializeGpsPublisher();
 }
 
@@ -76,15 +56,25 @@ void GpsDeviceManager::addGpsDevice(
   m_device_map[device_eui] = {request->device_name, request->nav_value};
   saveToYAML();
 
-  auto add_data_to_data_base_request =
-      std::make_shared<wisevision_msgs::srv::AddDataToDataBase::Request>();
-  add_data_to_data_base_request->db_path = "devices_data/" + device_eui;
-  add_data_to_data_base_request->query =
-      "device_name=" + request->device_name +
-      "&location={latitude:" + std::to_string(request->nav_value.latitude) +
-      ",longitude:" + std::to_string(request->nav_value.longitude) +
-      ",altitude:" + std::to_string(request->nav_value.altitude) + "}";
+  nlohmann::json location = {{"latitude", request->nav_value.latitude},
+                             {"longitude", request->nav_value.longitude},
+                             {"altitude", request->nav_value.altitude}};
 
+  nlohmann::json query = {{"device_name", request->device_name},
+                          {"location", location}};
+
+  auto add_data_request = std::make_shared<AddDataToDataBase::Request>();
+  add_data_request->db_path = "devices_data/" + device_eui;
+  add_data_request->query = query.dump();
+
+  if (!m_add_data_to_data_base_client->wait_for_service(
+          std::chrono::seconds(5))) {
+    RCLCPP_ERROR(this->get_logger(),
+                 "Service add_data_to_database not available.");
+    response->success = false;
+    response->error = "Service not available.";
+    return;
+  }
   std::unique_lock<std::mutex> lock(m_mutex);
 
   auto response_received_callback =
@@ -108,7 +98,7 @@ void GpsDeviceManager::addGpsDevice(
       };
 
   m_add_data_to_data_base_client->async_send_request(
-      add_data_to_data_base_request, response_received_callback);
+      add_data_request, response_received_callback);
 
   m_cv.wait(lock);
 }
@@ -128,9 +118,9 @@ void GpsDeviceManager::deleteGpsDevice(
   m_device_map.erase(device_eui);
   saveToYAML();
 
-  auto delete_data_base_request =
+  auto delete_data_request =
       std::make_shared<DeleteDataFromDataBase::Request>();
-  delete_data_base_request->db_path = "devices_data/" + device_eui;
+  delete_data_request->db_path = "devices_data/" + device_eui;
 
   std::unique_lock<std::mutex> lock(m_mutex);
 
@@ -156,7 +146,7 @@ void GpsDeviceManager::deleteGpsDevice(
       };
 
   m_delete_data_from_data_base_client->async_send_request(
-      delete_data_base_request, response_received_callback);
+      delete_data_request, response_received_callback);
 
   m_cv.wait(lock);
 }
@@ -164,6 +154,7 @@ void GpsDeviceManager::deleteGpsDevice(
 void GpsDeviceManager::modifyGpsDevice(
     const std::shared_ptr<ModifyGpsDevice::Request> request,
     std::shared_ptr<ModifyGpsDevice::Response> response) {
+
   std::string device_eui = eui64ToString(request->device_eui.data);
 
   if (m_device_map.find(device_eui) == m_device_map.end()) {
@@ -175,14 +166,16 @@ void GpsDeviceManager::modifyGpsDevice(
   m_device_map[device_eui] = {request->device_name, request->nav_value};
   saveToYAML();
 
-  auto add_data_to_data_base_request =
-      std::make_shared<AddDataToDataBase::Request>();
-  add_data_to_data_base_request->db_path = "devices_data/" + device_eui;
-  add_data_to_data_base_request->query =
-      "device_name=" + request->device_name +
-      "&location={latitude:" + std::to_string(request->nav_value.latitude) +
-      ",longitude:" + std::to_string(request->nav_value.longitude) +
-      ",altitude:" + std::to_string(request->nav_value.altitude) + "}";
+  nlohmann::json location = {{"latitude", request->nav_value.latitude},
+                             {"longitude", request->nav_value.longitude},
+                             {"altitude", request->nav_value.altitude}};
+
+  nlohmann::json query = {{"device_name", request->device_name},
+                          {"location", location}};
+
+  auto add_data_request = std::make_shared<AddDataToDataBase::Request>();
+  add_data_request->db_path = "devices_data/" + device_eui;
+  add_data_request->query = query.dump();
 
   std::unique_lock<std::mutex> lock(m_mutex);
 
@@ -207,7 +200,7 @@ void GpsDeviceManager::modifyGpsDevice(
       };
 
   m_add_data_to_data_base_client->async_send_request(
-      add_data_to_data_base_request, response_received_callback);
+      add_data_request, response_received_callback);
 
   m_cv.wait(lock);
 }
@@ -223,8 +216,6 @@ void GpsDeviceManager::initializeGpsPublisher() {
   m_timer = this->create_wall_timer(
       std::chrono::seconds(60),
       [this]() {
-        std::unique_lock<std::mutex> lock(m_mutex);
-
         auto request = std::make_shared<GetMessages::Request>();
         request->topic_name = "devices_data";
         request->message_type = "wisevision_msgs/GpsDevicesPublisher";
@@ -232,28 +223,19 @@ void GpsDeviceManager::initializeGpsPublisher() {
         auto response_received_callback =
             [this](rclcpp::Client<GetMessages>::SharedFuture future) {
               auto result = future.get();
-              {
-                std::lock_guard<std::mutex> guard(m_mutex);
-                if (result) {
-                  wisevision_msgs::msg::GpsDevicesPublisher msg;
-                  msg.devices_data = result->gps_devices_data;
-                  m_gps_publisher->publish(msg);
-                  RCLCPP_INFO(this->get_logger(),
-                              "Published GPS devices data.");
-                } else {
-                  RCLCPP_ERROR(this->get_logger(),
-                               "Failed to retrieve data from service.");
-                }
+              if (result) {
+                wisevision_msgs::msg::GpsDevicesPublisher msg;
+                msg.devices_data = result->gps_devices_data;
+                m_gps_publisher->publish(msg);
+                RCLCPP_INFO(this->get_logger(), "Published GPS devices data.");
+              } else {
+                RCLCPP_ERROR(this->get_logger(),
+                             "Failed to retrieve data from service.");
               }
-              m_cv.notify_one();
             };
 
-        std::thread([this, request, response_received_callback]() {
-          m_get_messages_client->async_send_request(request,
-                                                    response_received_callback);
-        }).detach();
-
-        m_cv.wait(lock);
+        m_get_messages_client->async_send_request(request,
+                                                  response_received_callback);
       },
       m_callback_group);
 }
@@ -278,6 +260,10 @@ void GpsDeviceManager::saveToYAML() {
   out << YAML::EndMap;
 
   std::ofstream fout(m_yaml_file);
+  if (!fout) {
+    RCLCPP_ERROR(this->get_logger(), "Failed to open YAML file for writing.");
+    return;
+  }
   fout << out.c_str();
 }
 
@@ -289,17 +275,21 @@ void GpsDeviceManager::loadFromYAML() {
     return;
   }
 
-  YAML::Node data = YAML::LoadFile(m_yaml_file);
-  for (const auto &node : data) {
-    std::string device_eui = node.first.as<std::string>();
-    auto device_info = node.second;
+  try {
+    YAML::Node data = YAML::LoadFile(m_yaml_file);
+    for (const auto &node : data) {
+      std::string device_eui = node.first.as<std::string>();
+      auto device_info = node.second;
 
-    std::string device_name = device_info["device_name"].as<std::string>();
-    sensor_msgs::msg::NavSatFix nav_value;
-    nav_value.latitude = device_info["latitude"].as<double>();
-    nav_value.longitude = device_info["longitude"].as<double>();
-    nav_value.altitude = device_info["altitude"].as<double>();
+      std::string device_name = device_info["device_name"].as<std::string>();
+      sensor_msgs::msg::NavSatFix nav_value;
+      nav_value.latitude = device_info["latitude"].as<double>();
+      nav_value.longitude = device_info["longitude"].as<double>();
+      nav_value.altitude = device_info["altitude"].as<double>();
 
-    m_device_map[device_eui] = {device_name, nav_value};
+      m_device_map[device_eui] = {device_name, nav_value};
+    }
+  } catch (const YAML::Exception &e) {
+    RCLCPP_ERROR(this->get_logger(), "Failed to parse YAML file: %s", e.what());
   }
 }
