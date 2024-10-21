@@ -6,15 +6,17 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 endif()
 
 include(FetchContent)
+
+# Fetch jwt-cpp library
 FetchContent_Declare(
     jwt-cpp 
     GIT_REPOSITORY https://github.com/Thalhammer/jwt-cpp.git
     GIT_TAG 08bcf77a687fb06e34138e9e9fa12a4ecbe12332 # v0.7.0 release
 )
-set(JWT_BUILD_EXAMPLES OFF CACHE BOOL "disable building examples" FORCE)
+set(JWT_BUILD_EXAMPLES OFF CACHE BOOL "Disable building examples" FORCE)
 FetchContent_MakeAvailable(jwt-cpp)
 
-# Fetching nlohmann/json library
+# Fetch nlohmann/json library
 FetchContent_Declare(
     nlohmann_json
     GIT_REPOSITORY https://github.com/nlohmann/json.git
@@ -22,35 +24,69 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(nlohmann_json)
 
-include_directories(
-${YAML_CPP_INCLUDEDIR}
-include
-)
-
-# find dependencies
+# Find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(sensor_msgs REQUIRED)
 find_package(wisevision_msgs REQUIRED)
 find_package(yaml-cpp REQUIRED)
 
-add_executable(gps_device_manager_node src/main.cpp src/GpsDeviceManager.cpp)
+# Create a library for shared code
+add_library(gps_device_manager_lib
+  src/GpsDeviceManager.cpp
+)
 
-ament_target_dependencies(gps_device_manager_node
+target_include_directories(gps_device_manager_lib
+  PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
+)
+
+ament_target_dependencies(gps_device_manager_lib
   rclcpp
   wisevision_msgs
   sensor_msgs
   yaml-cpp
 )
 
-include_directories(include)
-include_directories(${CMAKE_BINARY_DIR})
-
-target_link_libraries(gps_device_manager_node
+target_link_libraries(gps_device_manager_lib
   yaml-cpp
   nlohmann_json::nlohmann_json
   jwt-cpp::jwt-cpp
 )
+
+# Create the executable
+add_executable(gps_device_manager_node src/main.cpp)
+
+target_link_libraries(gps_device_manager_node
+  gps_device_manager_lib
+)
+
+ament_target_dependencies(gps_device_manager_node
+  rclcpp
+)
+
+if(BUILD_TESTING)
+  find_package(ament_cmake_gtest REQUIRED)
+
+  ament_add_gtest(gps_device_manager_test test/gps_device_manager_test.cpp)
+
+  target_include_directories(gps_device_manager_test PRIVATE 
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
+  )
+
+  target_link_libraries(gps_device_manager_test
+    gps_device_manager_lib
+  )
+
+  ament_target_dependencies(gps_device_manager_test 
+    rclcpp
+    sensor_msgs
+    wisevision_msgs
+  )
+endif()
 
 install(TARGETS
   gps_device_manager_node

@@ -47,8 +47,21 @@ jobs:
         cd wisevision_gps_tools_ws/src
         vcs import --recursive < wisevision_gps_tools/wisevision_gps_tools.repos
 
-    - name: Build and run tests
+    - name: Build and run 
       run: |
         . /opt/ros/humble/setup.sh
         cd wisevision_gps_tools_ws
         colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release --packages-up-to wisevision_gps_tools
+
+    - name: Tests
+      run: |
+          . /opt/ros/humble/setup.sh
+          cd wisevision_gps_tools_ws
+          colcon test --packages-up-to wisevision_gps_tools
+          colcon test-result --verbose
+          if colcon test-result | grep -q "0 errors"; then
+            echo "All tests passed!"
+          else
+            echo "Some tests failed."
+            exit 1
+          fi
