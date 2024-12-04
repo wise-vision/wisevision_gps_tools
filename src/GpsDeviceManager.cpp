@@ -288,7 +288,7 @@ void GpsDeviceManager::saveToYAML() {
 void GpsDeviceManager::loadFromYAML() {
   std::ifstream fin(m_yaml_file);
   if (!fin.good()) {
-    RCLCPP_WARN(this->get_logger(), "YAML file not found, starting with an empty device list.");
+    RCLCPP_WARN(this->get_logger(), "YAML file not found, starting with an empty device list. (Check out docs/minimal_example.md)");
     return;
   }
 
