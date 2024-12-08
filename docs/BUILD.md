@@ -15,7 +15,7 @@ colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release --package
 ```
 ## Local run
 ``` bash
-source intsall/setup.bash
+source install/setup.bash
 ros2 run wisevision_gps_tools gps_device_manager_node
 ```
 
