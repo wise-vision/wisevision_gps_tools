@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  wisevision_gps_tools:
+    build:
+      context: .
+    container_name: wisevision_gps_tools_container
+    network_mode: "host"
+    ipc: "host"
+    pid: "host"
+    stdin_open: true
+    tty: true

@@ -1,0 +1,67 @@
+name: Build and run ROS2 tests
+
+on:
+  pull_request:
+    branches: [ dev , main ]
+  schedule:
+    - cron: '0 22 * * *'
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [ubuntu-22.04, ubuntu-24.04]
+
+    runs-on: ${{ matrix.os }}
+
+    continue-on-error: true
+
+    container:
+      image: ros:humble-ros-base
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+      with:
+        token: ${{ secrets.PAT_TOKEN }} 
+        path: wisevision_gps_tools_ws/src/wisevision_gps_tools
+
+    - name: Install dependencies
+      run: |
+        apt-get update
+        apt-get install -y curl
+        apt-get install -y libcurl4-openssl-dev
+        apt-get install -y libjsoncpp-dev
+        apt-get install -y python3-vcstool
+        apt-get install -y openssh-client
+        rosdep update --include-eol-distros
+        cd wisevision_gps_tools_ws
+        rosdep install --from-paths src --ignore-src -r -y --rosdistro humble
+
+    - name: Configure Git for HTTPS authentication
+      run: |
+        git config --global url."https://${{ secrets.PAT_TOKEN }}@github.com/".insteadOf "https://github.com/"
+
+    - name: Import repositories using vcs
+      run: |
+        cd wisevision_gps_tools_ws/src
+        vcs import --recursive < wisevision_gps_tools/wisevision_gps_tools.repos
+
+    - name: Build and run 
+      run: |
+        . /opt/ros/humble/setup.sh
+        cd wisevision_gps_tools_ws
+        colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release --packages-up-to wisevision_gps_tools
+
+    - name: Tests
+      run: |
+          . /opt/ros/humble/setup.sh
+          cd wisevision_gps_tools_ws
+          colcon test --packages-up-to wisevision_gps_tools
+          colcon test-result --verbose
+          if colcon test-result | grep -q "0 errors"; then
+            echo "All tests passed!"
+          else
+            echo "Some tests failed."
+            exit 1
+          fi
