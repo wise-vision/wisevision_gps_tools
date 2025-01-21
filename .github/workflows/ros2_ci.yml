@@ -62,3 +62,8 @@ jobs:
             echo "Some tests failed."
             exit 1
           fi
+
+    - name: Clean up workspace
+      if: always()
+      run: |
+        sudo rm -rf wisevision_gps_tools_ws
