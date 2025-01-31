@@ -1,4 +1,4 @@
-FROM wisevision/ros_with_wisevision_msgs:humble
+FROM wisevision/ros_with_wisevision_msgs_and_wisevision_core:humble
 
 WORKDIR /root/wisevision_gps_tools_ws
 
@@ -12,7 +12,7 @@ RUN rosdep update --include-eol-distros && \
     rosdep install --from-paths src --ignore-src -r -y --rosdistro humble
 
 RUN /bin/bash -c "source /opt/ros/humble/setup.bash && \
-source /root/wisevision_msgs_ws/install/setup.bash && \
+source /root/wisevision_ws/install/setup.bash && \
 colcon build --symlink-install"
 
 ENTRYPOINT ["/bin/bash", "-c", "source /root/wisevision_gps_tools_ws/install/setup.bash && ros2 run wisevision_gps_tools gps_device_manager_node"]
