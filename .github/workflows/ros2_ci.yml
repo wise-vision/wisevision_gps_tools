@@ -9,7 +9,7 @@ on:
 jobs:
   build:
 
-    runs-on: self-hosted
+    runs-on: wisevision-runner
 
     continue-on-error: true
 
@@ -20,7 +20,6 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v3
       with:
-        token: ${{ secrets.PAT_TOKEN }} 
         path: wisevision_gps_tools_ws/src/wisevision_gps_tools
 
     - name: Install dependencies
@@ -34,10 +33,6 @@ jobs:
         rosdep update --include-eol-distros
         cd wisevision_gps_tools_ws
         rosdep install --from-paths src --ignore-src -r -y --rosdistro humble
-
-    - name: Configure Git for HTTPS authentication
-      run: |
-        git config --global url."https://${{ secrets.PAT_TOKEN }}@github.com/".insteadOf "https://github.com/"
 
     - name: Import repositories using vcs
       run: |
