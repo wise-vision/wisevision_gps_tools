@@ -58,7 +58,7 @@ rclcpp_components_register_node(
   gps_device_manager_lib 
   PLUGIN "GpsDeviceManager"
   EXECUTABLE gps_device_manager_node
-  )
+)
 
 if(BUILD_TESTING)
   find_package(ament_cmake_gtest REQUIRED)
