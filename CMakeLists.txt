@@ -7,7 +7,6 @@ endif()
 
 include(FetchContent)
 
-# Fetch jwt-cpp library
 FetchContent_Declare(
     jwt-cpp 
     GIT_REPOSITORY https://github.com/Thalhammer/jwt-cpp.git
@@ -16,7 +15,6 @@ FetchContent_Declare(
 set(JWT_BUILD_EXAMPLES OFF CACHE BOOL "Disable building examples" FORCE)
 FetchContent_MakeAvailable(jwt-cpp)
 
-# Fetch nlohmann/json library
 FetchContent_Declare(
     nlohmann_json
     GIT_REPOSITORY https://github.com/nlohmann/json.git
@@ -24,16 +22,15 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(nlohmann_json)
 
-# Find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(wisevision_msgs REQUIRED)
 find_package(yaml-cpp REQUIRED)
+find_package(rclcpp_components REQUIRED)
 
-# Create a library for shared code
-add_library(gps_device_manager_lib
+add_library(gps_device_manager_lib SHARED
   src/GpsDeviceManager.cpp
 )
 
@@ -46,6 +43,7 @@ target_include_directories(gps_device_manager_lib
 ament_target_dependencies(gps_device_manager_lib
   rclcpp
   wisevision_msgs
+  rclcpp_components
   sensor_msgs
   yaml-cpp
 )
@@ -56,15 +54,10 @@ target_link_libraries(gps_device_manager_lib
   jwt-cpp::jwt-cpp
 )
 
-# Create the executable
-add_executable(gps_device_manager_node src/main.cpp)
-
-target_link_libraries(gps_device_manager_node
-  gps_device_manager_lib
-)
-
-ament_target_dependencies(gps_device_manager_node
-  rclcpp
+rclcpp_components_register_node(
+  gps_device_manager_lib 
+  PLUGIN "GpsDeviceManager"
+  EXECUTABLE gps_device_manager_node
 )
 
 if(BUILD_TESTING)
@@ -92,5 +85,14 @@ install(TARGETS
   gps_device_manager_node
   DESTINATION lib/${PROJECT_NAME}
 )
+install(TARGETS
+  gps_device_manager_lib
+  gps_device_manager_node
+  ARCHIVE DESTINATION lib
+  LIBRARY DESTINATION lib
+  RUNTIME DESTINATION bin
+)
 
+ament_export_dependencies(rclcpp_components)
+ament_export_libraries(gps_device_manager_lib)
 ament_package()

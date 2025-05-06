@@ -53,7 +53,7 @@ inline std::string eui64ToString(const std::array<uint8_t, 8> &data) {
 
 class GpsDeviceManager : public rclcpp::Node {
 public:
-  GpsDeviceManager();
+  explicit GpsDeviceManager(const rclcpp::NodeOptions& options);
 
 private:
   void addGpsDevice(const std::shared_ptr<AddGpsDevice::Request> request,
