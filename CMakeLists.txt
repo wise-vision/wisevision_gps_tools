@@ -82,10 +82,6 @@ if(BUILD_TESTING)
 endif()
 
 install(TARGETS
-  gps_device_manager_node
-  DESTINATION lib/${PROJECT_NAME}
-)
-install(TARGETS
   gps_device_manager_lib
   gps_device_manager_node
   ARCHIVE DESTINATION lib
