@@ -17,6 +17,18 @@ source install/setup.bash
 ros2 run wisevision_gps_tools gps_device_manager_node
 ```
 
+Run as component:
+First start components container:
+```bash
+source install/setup.bash
+ros2 run rclcpp_components component_container
+```
+Load component:
+``` bash
+source install/setup.bash
+ros2 component load /ComponentManager wisevision_gps_tools GpsDeviceManager
+```
+
 ### Using the GPS Device Manager
 
 The `gps_device_manager_node` provides services to add, delete, and modify GPS devices. It also publishes GPS data of the devices.

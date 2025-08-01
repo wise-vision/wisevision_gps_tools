@@ -10,7 +10,10 @@
 
 #include "wisevision_gps_tools/GpsDeviceManager.hpp"
 
-GpsDeviceManager::GpsDeviceManager() : Node("gps_device_manager"), m_yaml_file("gps_devices.yaml") {
+GpsDeviceManager::GpsDeviceManager(const rclcpp::NodeOptions& options)
+  : Node("gps_device_manager",
+         rclcpp::NodeOptions(options).start_parameter_services(false).start_parameter_event_publisher(false)),
+    m_yaml_file("gps_devices.yaml") {
 
   this->declare_parameter<std::string>("yaml_file", m_yaml_file);
   this->get_parameter("yaml_file", m_yaml_file);
@@ -298,7 +301,8 @@ void GpsDeviceManager::saveToYAML() {
 void GpsDeviceManager::loadFromYAML() {
   std::ifstream fin(m_yaml_file);
   if (!fin.good()) {
-    RCLCPP_WARN(this->get_logger(), "YAML file not found, starting with an empty device list. (Check out docs/minimal_example.md)");
+    RCLCPP_WARN(this->get_logger(),
+                "YAML file not found, starting with an empty device list. (Check out docs/minimal_example.md)");
     return;
   }
 
@@ -320,3 +324,7 @@ void GpsDeviceManager::loadFromYAML() {
     RCLCPP_ERROR(this->get_logger(), "Failed to parse YAML file: %s", e.what());
   }
 }
+
+#include <rclcpp_components/register_node_macro.hpp>
+
+RCLCPP_COMPONENTS_REGISTER_NODE(GpsDeviceManager)

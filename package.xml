@@ -11,8 +11,11 @@
 
   <depend>rclcpp</depend>
   <depend>std_msgs</depend>
-  <depend>lora_msgs</depend>
+  <depend>sensor_msgs</depend>
   <depend>wisevision_msgs</depend>
+  <depend>yaml-cpp</depend>
+  <depend>rclcpp_components</depend>
+  <depend>spdlog</depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>

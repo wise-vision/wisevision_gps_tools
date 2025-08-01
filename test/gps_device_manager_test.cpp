@@ -30,7 +30,7 @@ protected:
     }
 
     manager_executor = std::make_shared<rclcpp::executors::MultiThreadedExecutor>();
-    manager_node = std::make_shared<GpsDeviceManager>();
+    manager_node = std::make_shared<GpsDeviceManager>(rclcpp::NodeOptions());
     manager_executor->add_node(manager_node);
 
     manager_executor_thread = std::make_shared<std::thread>([this]() { manager_executor->spin(); });
